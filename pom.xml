@@ -18,7 +18,7 @@
 
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.amazonaws</groupId>
+  <groupId>uk.co.revsys</groupId>
   <artifactId>kinesis-log4j-appender</artifactId>
   <version>1.0.0</version>
 
