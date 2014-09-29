@@ -70,6 +70,13 @@
       <artifactId>log4j</artifactId>
       <version>${log4j.version}</version>
     </dependency>
+
+    <dependency>
+        <groupId>uk.co.revsys.jsont</groupId>
+        <artifactId>jsont</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </dependency>
+
   </dependencies>
 
   <properties>

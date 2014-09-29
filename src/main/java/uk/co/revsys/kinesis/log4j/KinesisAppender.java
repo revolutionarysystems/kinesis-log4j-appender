@@ -56,6 +56,7 @@ import com.amazonaws.services.kinesis.model.StreamStatus;
 public class KinesisAppender extends AppenderSkeleton {
 
     private static final Logger LOGGER = Logger.getLogger(KinesisAppender.class);
+    //private static final Logger LOGGER = Logger.getLogger("kinesis-appender");
     private String encoding = AppenderConstants.DEFAULT_ENCODING;
     private int maxRetries = AppenderConstants.DEFAULT_MAX_RETRY_COUNT;
     private int bufferSize = AppenderConstants.DEFAULT_BUFFER_SIZE;
@@ -63,6 +64,9 @@ public class KinesisAppender extends AppenderSkeleton {
     private int shutdownTimeout = AppenderConstants.DEFAULT_SHUTDOWN_TIMEOUT_SEC;
     private String streamName;
     private String partitionKey;
+    private String regex;
+    private String agent;
+    private String owner;
     private boolean initializationFailed = false;
     private BlockingQueue<Runnable> taskBuffer;
     private AmazonKinesisAsyncClient kinesisClient;
@@ -189,17 +193,28 @@ public class KinesisAppender extends AppenderSkeleton {
                     + " exists and is active. Failed to initialize kinesis log4j appender: " + name);
             return;
         }
+        String message = layout.format(logEvent);
+        if (regex!=null && !(regex.equals(""))){
+            message = new uk.co.revsys.jsont.RegexJSONParser().parseString(message, regex);
+        }
+        if (owner==null || owner.equals("")){
+            owner = "unknownOwner";
+        }
+        if (agent==null || agent.equals("")){
+            agent = "unknownAgent";
+        }
+        message = "{ \"owner\":\""+owner+"\", \"agent\":\""+agent+"\", "+message.trim().substring(1);
         try {
-            String message = layout.format(logEvent);
             ByteBuffer data = ByteBuffer.wrap(message.getBytes(encoding));
 //            kinesisClient.putRecordAsync(new PutRecordRequest().withPartitionKey(UUID.randomUUID().toString())
 //                    .withStreamName(streamName).withData(data), asyncCallHander);
             kinesisClient.putRecordAsync(new PutRecordRequest().withPartitionKey(partitionKey)
                     .withStreamName(streamName).withData(data), asyncCallHander);
         } catch (Exception e) {
-            LOGGER.error("Failed to schedule log entry for publishing into Kinesis stream: " + streamName);
-            errorHandler.error("Failed to schedule log entry for publishing into Kinesis stream: " + streamName, e,
-                    ErrorCode.WRITE_FAILURE, logEvent);
+            System.out.println("log failed on message: "+message);
+//            LOGGER.error("Failed to schedule log entry for publishing into Kinesis stream: " + streamName);
+//            errorHandler.error("Failed to schedule log entry for publishing into Kinesis stream: " + streamName, e,
+//                    ErrorCode.WRITE_FAILURE, logEvent);
         }
     }
 
@@ -241,6 +256,63 @@ public class KinesisAppender extends AppenderSkeleton {
     public void setPartitionKey(String partitionKey) {
         Validator.validate(!Validator.isBlank(partitionKey), "partitionKey cannot be blank");
         this.partitionKey = partitionKey.trim();
+    }
+
+    /**
+     * Returns configured regex parse string
+     *
+     * @return configured regex parse string
+     */
+    public String getRegex() {
+        return regex;
+    }
+
+    /**
+     * Sets regex parse string
+     *
+     * @param regex regex parse string, to be applied to log message and create JSON; ignored if null or empty
+     * 
+     */
+    public void setRegex(String regex) {
+        this.regex = regex.trim();
+    }
+
+    /**
+     * Returns configured agent
+     *
+     * @return configured agent
+     */
+    public String getAgent() {
+        return agent;
+    }
+
+    /**
+     * Sets agent parse string
+     *
+     * @param agent, to be included in log string
+     * 
+     */
+    public void setAgent(String agent) {
+        this.agent = agent.trim();
+    }
+
+    /**
+     * Returns configured owner
+     *
+     * @return configured owner
+     */
+    public String getOwner() {
+        return owner;
+    }
+
+    /**
+     * Sets owner parse string
+     *
+     * @param owner, to be included in log string
+     * 
+     */
+    public void setOwner(String owner) {
+        this.owner = owner.trim();
     }
 
     /**
