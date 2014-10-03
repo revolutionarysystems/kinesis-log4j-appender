@@ -34,6 +34,7 @@ import org.apache.log4j.spi.ErrorCode;
 import org.apache.log4j.spi.LoggingEvent;
 
 import com.amazonaws.ClientConfiguration;
+import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.retry.PredefinedRetryPolicies;
 import com.amazonaws.retry.RetryPolicy;
 import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient;
@@ -62,6 +63,8 @@ public class KinesisAppender extends AppenderSkeleton {
     private int bufferSize = AppenderConstants.DEFAULT_BUFFER_SIZE;
     private int threadCount = AppenderConstants.DEFAULT_THREAD_COUNT;
     private int shutdownTimeout = AppenderConstants.DEFAULT_SHUTDOWN_TIMEOUT_SEC;
+    private String accessKey;
+    private String secretKey;
     private String streamName;
     private String partitionKey;
     private String regex;
@@ -96,6 +99,16 @@ public class KinesisAppender extends AppenderSkeleton {
      */
     @Override
     public void activateOptions() {
+        if (accessKey == null) {
+            initializationFailed = true;
+            error("Invalid configuration - accessKey cannot be null for appender: " + name);
+        }
+        
+        if (secretKey == null) {
+            initializationFailed = true;
+            error("Invalid configuration - secretKey cannot be null for appender: " + name);
+        }
+        
         if (streamName == null) {
             initializationFailed = true;
             error("Invalid configuration - streamName cannot be null for appender: " + name);
@@ -121,7 +134,7 @@ public class KinesisAppender extends AppenderSkeleton {
         ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(threadCount, threadCount,
                 AppenderConstants.DEFAULT_THREAD_KEEP_ALIVE_SEC, TimeUnit.SECONDS, taskBuffer, new BlockFastProducerPolicy());
         threadPoolExecutor.prestartAllCoreThreads();
-        kinesisClient = new AmazonKinesisAsyncClient(new CustomCredentialsProviderChain(), clientConfiguration,
+        kinesisClient = new AmazonKinesisAsyncClient(new BasicAWSCredentials(accessKey, secretKey), clientConfiguration,
                 threadPoolExecutor);
 
         DescribeStreamResult describeResult = null;
@@ -195,6 +208,8 @@ public class KinesisAppender extends AppenderSkeleton {
         }
         String message = layout.format(logEvent);
         if (regex!=null && !(regex.equals(""))){
+            System.out.println("message = " + message);
+            System.out.println("regex = " + regex);
             message = new uk.co.revsys.jsont.RegexJSONParser().parseString(message, regex);
         }
         if (owner==null || owner.equals("")){
@@ -313,6 +328,44 @@ public class KinesisAppender extends AppenderSkeleton {
      */
     public void setOwner(String owner) {
         this.owner = owner.trim();
+    }
+    
+    /**
+     * Returns configured accessKey
+     *
+     * @return configured accessKey
+     */
+    public String getAccessKey() {
+        return owner;
+    }
+
+    /**
+     * Sets accessKey parse string
+     *
+     * @param accessKey, to be included in log string
+     * 
+     */
+    public void setAccessKey(String accessKey) {
+        this.accessKey = accessKey.trim();
+    }
+    
+    /**
+     * Returns configured secretKey
+     *
+     * @return configured secretKey
+     */
+    public String getSecretKey() {
+        return secretKey;
+    }
+
+    /**
+     * Sets secretKey parse string
+     *
+     * @param secretKey, to be included in log string
+     * 
+     */
+    public void setSecretKey(String secretKey) {
+        this.secretKey = secretKey.trim();
     }
 
     /**
